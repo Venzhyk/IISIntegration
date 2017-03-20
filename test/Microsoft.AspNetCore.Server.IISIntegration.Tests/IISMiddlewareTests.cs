@@ -1,9 +1,10 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features.Authentication;
@@ -24,6 +25,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
                     app.Run(context =>
@@ -53,6 +55,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
                     app.Run(context =>
@@ -79,6 +82,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
                     app.Run(context => Task.FromResult(0));
@@ -100,6 +104,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/pathBase")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
                     app.Run(context => Task.FromResult(0));
@@ -119,6 +124,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/pathbase")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
                     app.Run(context =>
@@ -148,15 +154,19 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 .UseSetting("PORT", "12345")
                 .UseSetting("APPL_PATH", "/")
                 .UseIISIntegration()
+                .ConfigureServices(services => services.AddAuthentication())
                 .Configure(app =>
                 {
-                    app.Run(context =>
+                    app.Run(async context => 
                     {
-                        var auth = context.Features.Get<IHttpAuthenticationFeature>();
-                        Assert.NotNull(auth);
-                        Assert.Equal("Microsoft.AspNetCore.Server.IISIntegration.AuthenticationHandler", auth.Handler.GetType().FullName);
+                        var auth = context.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+                        var ntlm = await auth.GetSchemeAsync("NTLM");
+                        Assert.NotNull(ntlm);
+                        Assert.Equal("Microsoft.AspNetCore.Server.IISIntegration.AuthenticationHandler", ntlm.HandlerType.FullName);
+                        var negotiate = await auth.GetSchemeAsync("Negotiate");
+                        Assert.NotNull(negotiate);
+                        Assert.Equal("Microsoft.AspNetCore.Server.IISIntegration.AuthenticationHandler", negotiate.HandlerType.FullName);
                         assertsExecuted = true;
-                        return Task.FromResult(0);
                     });
                 });
             var server = new TestServer(builder);
@@ -189,7 +199,7 @@ namespace Microsoft.AspNetCore.Server.IISIntegration
                 {
                     app.Run(context =>
                     {
-                        var auth = context.Features.Get<IHttpAuthenticationFeature>();
+                        var auth = context.RequestServices.GetService<IAuthenticationSchemeProvider>();
                         Assert.Null(auth);
                         assertsExecuted = true;
                         return Task.FromResult(0);
